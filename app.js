@@ -60,3 +60,67 @@ app.post("/districts/", async (request, response) => {
   await db.run(postDistrictQuery);
   response.send("District Successfully Added");
 });
+
+app.get("/districts/:districtId/", async (request, response) => {
+  let { districtId } = request.params;
+  let getDistrictQuery = `
+        SELECT district_id AS districtId, district_name AS districtName, state_id AS stateId, cases, cured, active, deaths 
+        FROM district
+        WHERE district_id = ${districtId};
+    `;
+  let district = await db.get(getDistrictQuery);
+  response.send(district);
+});
+
+app.delete("/districts/:districtId/", async (request, response) => {
+  let { districtId } = request.params;
+  let postDistrictQuery = `
+        DELETE FROM district
+        WHERE district_id = ${districtId};
+    `;
+  await db.run(postDistrictQuery);
+  response.send("District Removed");
+});
+
+app.put("/districts/:districtId/", async (request, response) => {
+  let { districtId } = request.params;
+  let districtDetails = request.body;
+  let { districtName, stateId, cases, cured, active, deaths } = districtDetails;
+  let updateDistrictQuery = `
+        UPDATE district
+        SET district_name='${districtName}', state_id=${stateId}, cases=${cases}, cured=${cured}, active=${active}, deaths=${deaths}
+        WHERE district_id=${districtId};
+    `;
+  await db.run(updateDistrictQuery);
+  response.send("District Details Updated");
+});
+
+app.get("/states/:stateId/stats/", async (request, response) => {
+  let { stateId } = request.params;
+  let getStateStatsQuery = `
+        SELECT SUM(district.cases), SUM(district.cured) , SUM(district.active) , SUM(district.deaths)
+        FROM state
+        INNER JOIN district ON state.state_id = district.state_id
+        WHERE state.state_id = ${stateId}
+        GROUP BY state.state_id
+    `;
+  let stats = await db.get(getStateStatsQuery);
+  response.send({
+    totalCases: stats["SUM(district.cases)"],
+    totalCured: stats["SUM(district.cured)"],
+    totalActive: stats["SUM(district.active)"],
+    totalDeaths: stats["SUM(district.deaths)"],
+  });
+});
+
+app.get("/districts/:districtId/details/", async (request, response) => {
+  let { districtId } = request.params;
+  let getStateQuery = `
+        SELECT state.state_name AS stateName
+        FROM state
+        INNER JOIN district ON state.state_id = district.state_id
+        WHERE district_id = ${districtId};
+    `;
+  let state = await db.get(getStateQuery);
+  response.send(state);
+});
